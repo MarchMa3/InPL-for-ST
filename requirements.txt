@@ -1,0 +1,20 @@
+# Core packages
+numpy>=1.20.0
+pandas>=1.3.0
+tqdm>=4.62.0
+
+# PyTorch and vision
+torch>=1.10.0
+torchvision>=0.11.0
+Pillow>=8.0.0
+
+# Machine learning and data processing
+scanpy>=1.9.0
+datasets>=2.10.0
+timm>=0.6.0
+
+# Hugging Face
+huggingface_hub>=0.13.0
+
+# File handling
+glob2>=0.7

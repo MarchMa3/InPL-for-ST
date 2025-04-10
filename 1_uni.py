@@ -2,7 +2,9 @@ import os
 from huggingface_hub import login, hf_hub_download
 import pandas as pd
 import numpy as np
+import scanpy as sc
 from tqdm import tqdm
+from glob import glob
 import timm 
 import torch
 from PIL import Image
@@ -58,7 +60,10 @@ def load_uni(model_type='uni2-h', device=None):
 
     return model, transform, device
 
-
+def load_patch_from_h5(h5_path):
+    """
+    Designed to load 
+    """
 def extract_features_from_img(model, transform, device, img_path):
     """
     Designed for testing extraction from a single image.
@@ -74,3 +79,47 @@ def extract_features_from_img(model, transform, device, img_path):
     print(f"Extracted features from {img_path} with shape {feature.shape}")
 
     return feature
+
+def extract_features_from_patch(model, transform, device, patch_path):
+    """
+    Desgined for extracting features from a single patch. (Testing)
+    """
+    if not os.path.exists(patch_path):
+        raise FileNotFoundError(f"Image file in {patch_path} does not exist.")
+
+    img = glob(os.path.join((patch_path, "*.png")) + \
+          glob(os.path.join((patch_path), "*.jpg")) + \
+          glob(os.path.join((patch_path), "*.tif"))
+    if not img:
+        print(f"Not find img in {patch_path}.")
+
+    features = []
+    filename = []
+
+    batch_size = 16
+    for i in tqdm(range(0, len(img), batch_size)):
+        batch_file = img[i : i+ batch_size]
+        batch_tensors = []
+
+        for img_path in batch_file:
+            try:
+                img = Image.open(img_path).convert('RGB')
+                img_tensor = transform(img).unsqueeze(0)
+                batch_tensors.append(img_tensor)
+                filename.append(os.path.basename(img_path))
+            except Exception as e:
+                print(f"Have error when deal with {img_path}.")
+        
+        if batch_tensors:
+            batch_tensor = torch.cat(batch_tensors, dim=0).to(device)
+            with torch.no_grad():
+                batch_features = model(batch_tensor).cpu().numpy()
+            
+            for feature in batch_features:
+                features.append(feature)
+            
+    return np.array(features), np.array(filename)
+
+if __name__ == "__main__":
+    patch_path = "/workspace/InPL-for-ST/hest_data/patches/SPA0.h5"
+    output_path = "/workspace/InPL-for-ST/results"
