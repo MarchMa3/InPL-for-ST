@@ -52,6 +52,7 @@ class FeatureExtractor:
         
         if model_type == 'uni2-h':
             timm_kwargs = {
+                'model_name': 'vit_giant_patch14_224',
                 'img_size': 224, 
                 'patch_size': 14, 
                 'depth': 24,
@@ -97,33 +98,41 @@ class FeatureExtractor:
         
         data_dir = os.path.join(parent_dir, 'data')
         os.makedirs(data_dir, exist_ok=True)
+
+        train_dir = os.path.join(data_dir, 'train')
+        test_dir = os.path.join(data_dir, 'test')
+        os.makedirs(train_dir, exist_ok=True)
+        os.makedirs(test_dir, exist_ok=True)
+    
         random.seed(seed)
 
-        organ_list = ['Spinal cord',
-                    'Brain',
-                    'Breast',
-                    'Bowel',
-                    'Skin',
-                    'Kidney',
-                    'Heart',
-                    'Prostate',
-                    'Lung',
-                    'Liver',
-                    'Uterus',
-                    'Eye',
-                    'Muscle',
-                    'Bone',
-                    'Pancreas',
-                    'Bladder',
-                    'Lymphoid',
-                    'Cervix',
-                    'Lymph node',
-                    'Ovary',
-                    'Embryo',
-                    'Lung/Brain',
-                    'Whole organism',
-                    'Kidney/Brain',
-                    'Placenta']
+        organ_list = ['spinal cord',
+                    'brain',
+                    'breast',
+                    'bowel',
+                    'skin',
+                    'kidney',
+                    'heart',
+                    'prostate',
+                    'lung',
+                    'liver',
+                    'uterus',
+                    'eye',
+                    'muscle',
+                    'bone',
+                    'pancreas',
+                    'bladder',
+                    'lymphoid',
+                    'cervix',
+                    'lymph node',
+                    'ovary',
+                    'embryo',
+                    'lung/brain',
+                    'whole organism',
+                    'kidney/brain',
+                    'placenta']
+        if organ is not None:
+            organ = organ.lower()
         if organ is not None:
             if organ in organ_list:
                 organs_to_process = [organ]
@@ -136,13 +145,10 @@ class FeatureExtractor:
             logger.info(f'Processing all organs: {organ_list}')
 
         for organ in organs_to_process:
-            organ_dir = os.path.join(data_dir, organ)
-            os.makedirs(organ_dir, exist_ok=True)
-
-            train_dir = os.path.join(organ_dir, 'train')
-            test_dir = os.path.join(organ_dir, 'test')
-            os.makedirs(train_dir, exist_ok=True)
-            os.makedirs(test_dir, exist_ok=True)
+            train_class_dir = os.path.join(train_dir, organ)
+            test_class_dir = os.path.join(test_dir, organ)
+            os.makedirs(train_class_dir, exist_ok=True)
+            os.makedirs(test_class_dir, exist_ok=True)
 
             patches_dir = os.path.join(base_dir, organ, 'patches')
             if not os.path.exists(patches_dir):
@@ -172,12 +178,12 @@ class FeatureExtractor:
                         for i, idx in enumerate(train_idx):
                             patch = patches[idx]
                             img = Image.fromarray(patch.astype(np.uint8))
-                            img.save(os.path.join(train_dir, f"{h5_file[:-3]}_{i}.png"))
+                            img.save(os.path.join(train_class_dir, f"{h5_file[:-3]}_{i}.png"))
                         
                         for i, idx in enumerate(test_idx):
                             patch = patches[idx]
                             img = Image.fromarray(patch.astype(np.uint8))
-                            img.save(os.path.join(test_dir, f"{h5_file[:-3]}_{i}.png"))
+                            img.save(os.path.join(test_class_dir, f"{h5_file[:-3]}_{i}.png"))
                 except Exception as e:
                     logger.error(f"Error processing {h5_path}: {str(e)}")
         return data_dir
@@ -189,38 +195,40 @@ class FeatureExtractor:
         output_dir = self.output_dir
         os.makedirs(output_dir, exist_ok=True)
 
-        organ_list = ['Spinal cord',
-                    'Brain',
-                    'Breast',
-                    'Bowel',
-                    'Skin',
-                    'Kidney',
-                    'Heart',
-                    'Prostate',
-                    'Lung',
-                    'Liver',
-                    'Uterus',
-                    'Eye',
-                    'Muscle',
-                    'Bone',
-                    'Pancreas',
-                    'Bladder',
-                    'Lymphoid',
-                    'Cervix',
-                    'Lymph node',
-                    'Ovary',
-                    'Embryo',
-                    'Lung/Brain',
-                    'Whole organism',
-                    'Kidney/Brain',
-                    'Placenta']
+        organ_list = ['spinal cord',
+                    'brain',
+                    'breast',
+                    'bowel',
+                    'skin',
+                    'kidney',
+                    'heart',
+                    'prostate',
+                    'lung',
+                    'liver',
+                    'uterus',
+                    'eye',
+                    'muscle',
+                    'bone',
+                    'pancreas',
+                    'bladder',
+                    'lymphoid',
+                    'cervix',
+                    'lymph node',
+                    'ovary',
+                    'embryo',
+                    'lung/brain',
+                    'whole organism',
+                    'kidney/brain',
+                    'placenta']
+        if organ is not None:
+            organ = organ.lower()
         if organ is not None:
             if organ in organ_list:
                 organs_to_process = [organ]
                 logger.info(f'Processing organ: {organ}')
             else:
                 logger.error(f"{organ} is not in list.")
-                return data_dir
+                return {}
         else:
             organs_to_process = organ_list
             logger.info(f'Processing all organs: {organ_list}')
@@ -233,28 +241,56 @@ class FeatureExtractor:
                 continue
             organ_output = os.path.join(output_dir, organ)
             os.makedirs(organ_output, exist_ok=True)
+
+            # Train dataset 
             train_path = os.path.join(organ_path, 'train')
             if os.path.exists(train_path):
                 logger.info(f"Extracting features from {train_path}")
-                train_features = self._extract_features_from_folder(train_path)
-                
+                train_dataset = datasets.ImageFolder(train_path, transform=self.transform)
+                train_dataloader = DataLoader(
+                    train_dataset, 
+                    batch_size=self.batch_size, 
+                    shuffle=False,
+                    num_workers=self.num_workers
+                )
+            
+                train_features_dict = extract_patch_features_from_dataloader(self.model, train_dataloader)
+                train_features = {
+                'embeddings': torch.Tensor(train_features_dict['embeddings']),
+                'labels': torch.Tensor(train_features_dict['labels']).type(torch.long),
+                'classes': train_dataset.classes
+                }
                 train_output = os.path.join(organ_output, 'train_features.pt')
                 torch.save(train_features, train_output)
                 logger.info(f"Saved train features to {train_output}")
                 results[f"{organ}_train"] = train_output
-            
+
             test_path = os.path.join(organ_path, 'test')
             if os.path.exists(test_path):
                 logger.info(f"Extracting features from {test_path}")
-                test_features = self._extract_features_from_folder(test_path)
+                
+                test_dataset = datasets.ImageFolder(test_path, transform=self.transform)
+                test_dataloader = DataLoader(
+                    test_dataset, 
+                    batch_size=self.batch_size, 
+                    shuffle=False,
+                    num_workers=self.num_workers
+                )
+                
+                test_features_dict = extract_patch_features_from_dataloader(self.model, test_dataloader)
+                
+                test_features = {
+                    'embeddings': torch.Tensor(test_features_dict['embeddings']),
+                    'labels': torch.Tensor(test_features_dict['labels']).type(torch.long),
+                    'classes': test_dataset.classes
+                }
                 
                 test_output = os.path.join(organ_output, 'test_features.pt')
                 torch.save(test_features, test_output)
                 logger.info(f"Saved test features to {test_output}")
                 results[f"{organ}_test"] = test_output
-        
+    
         return results
-
 
 
 
@@ -262,8 +298,10 @@ if __name__ == "__main__":
     import argparse
     
     parser = argparse.ArgumentParser(description='Feature extraction and data preparation')
-    parser.add_argument('--base_dir', type=str, default='./hest_data', 
+    parser.add_argument('--base_dir', type=str, default='./data', 
                         help='base directory for data which contains all organs')
+    parser.add_argument('--h5_dir', type=str, default='./hest_data',
+                        help='directory containing original h5 files (only used with --prepare_data)')
     parser.add_argument('--organ', type=str, default=None, 
                         help='specific organ to process, if None, process all organs')
     parser.add_argument('--output_dir', type=str, default='./results/features', 
@@ -274,25 +312,31 @@ if __name__ == "__main__":
                         help='whether to prepare data from h5 files')
     
     args = parser.parse_args()
+
+    if args.organ:
+        args.organ = args.organ.lower()
     
     if args.prepare_data:
-        print(f"Prepare datasets: base_dir={args.base_dir}, organ={args.organ}")
+        print(f"Preparing datasets from h5 files: h5_dir={args.h5_dir}, organ={args.organ}")
         data_dir = FeatureExtractor.load_patch_from_h5(
-            base_dir=args.base_dir,
+            base_dir=args.h5_dir,  
             organ=args.organ
         )
         print(f"Finished data preparation and save to: {data_dir}")
     else:
-        parent_dir = os.path.dirname(os.path.abspath(args.base_dir))
-        data_dir = os.path.join(parent_dir, 'data')
+        print(f"Using pre-processed data from: {args.base_dir}")
+        data_dir = args.base_dir  
     
     extractor = FeatureExtractor(
         output_dir=args.output_dir,
         batch_size=args.batch_size
     )
     
-    results = extractor.extract_features_for_dataset(data_dir, args.organ)
+    results = extractor.feature_extractor(data_dir, args.organ)
     
-    print("Feature extraction complete. Results saved to:")
-    for key, path in results.items():
-        print(f"  - {key}: {path}")
+    if results:
+        print("Feature extraction complete. Results saved to:")
+        for key, path in results.items():
+            print(f"  - {key}: {path}")
+    else:
+        print("No features were extracted. Please check the organ name or data directory.")
