@@ -32,7 +32,7 @@ class FeatureExtractor:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         os.makedirs(output_dir, exist_ok=True)
-        self.load_uni()
+        self.model, self.transform, self.device = self.load_uni(model_type, self.device)
 
 
     def load_uni(self, model_type='uni2-h', device=None):
@@ -181,70 +181,81 @@ class FeatureExtractor:
                 except Exception as e:
                     logger.error(f"Error processing {h5_path}: {str(e)}")
         return data_dir
+    
+    def feature_extractor(self, data_dir, organ=None):
+        if self.model is None:
+            self.model, self.transform, self.device = self.load_uni(self.model_type, self.device)
 
-    def extract_features_from_img(self, img_path):
-        """
-        Designed for testing extraction from a single image.
-        """
-        if not os.path.exists(img_path):
-            raise FileNotFoundError(f"Image file in {img_path} does not exist.")
-        
-        if self.model is None or self.transform is None:
-            self.model, self.transform, _ = self.load_uni()
+        output_dir = self.output_dir
+        os.makedirs(output_dir, exist_ok=True)
 
-        img = Image.open(img_path).convert('RGB')
-        img_tensor = self.transform(img).unsqueeze(0).to(self.device)
+        organ_list = ['Spinal cord',
+                    'Brain',
+                    'Breast',
+                    'Bowel',
+                    'Skin',
+                    'Kidney',
+                    'Heart',
+                    'Prostate',
+                    'Lung',
+                    'Liver',
+                    'Uterus',
+                    'Eye',
+                    'Muscle',
+                    'Bone',
+                    'Pancreas',
+                    'Bladder',
+                    'Lymphoid',
+                    'Cervix',
+                    'Lymph node',
+                    'Ovary',
+                    'Embryo',
+                    'Lung/Brain',
+                    'Whole organism',
+                    'Kidney/Brain',
+                    'Placenta']
+        if organ is not None:
+            if organ in organ_list:
+                organs_to_process = [organ]
+                logger.info(f'Processing organ: {organ}')
+            else:
+                logger.error(f"{organ} is not in list.")
+                return data_dir
+        else:
+            organs_to_process = organ_list
+            logger.info(f'Processing all organs: {organ_list}')
+        results = {}
 
-        with torch.no_grad():
-            feature = self.model(img_tensor).cpu().numpy().squeeze()
-
-        logger.info(f"Extracted features from {img_path} with shape {feature.shape}")
-
-        return feature
-
-    def extract_features_from_patch(self, patch_path):
-        """
-        Desgined for extracting features from a single patch. (Testing)
-        """
-        if not os.path.exists(patch_path):
-            raise FileNotFoundError(f"Image file in {patch_path} does not exist.")
-        
-        if self.model is None or self.transform is None:
-            self.model, self.transform, _ = self.load_uni()
-
-        img_paths = glob(os.path.join(patch_path, "*.png")) + \
-            glob(os.path.join((patch_path), "*.jpg")) + \
-            glob(os.path.join((patch_path), "*.tif"))
-        if not img_paths:
-            logger.warning(f"No images found in {patch_path}.")
-            return None, None
-        
-        features = []
-        filename = []
-
-        batch_size = self.batch_size
-        for i in tqdm(range(0, len(img), batch_size), desc="Processing batches"):
-            batch_file = img_paths[i : i+batch_size]
-            batch_tensors = []
-
-            for img_path in batch_file:
-                try:
-                    img = Image.open(img_path).convert('RGB')
-                    img_tensor = self.transform(img).unsqueeze(0)
-                    batch_tensors.append(img_tensor)
-                    filename.append(os.path.basename(img_path))
-                except Exception as e:
-                    logger.error(f"Error processing {img_path}: {str(e)}")
+        for organ in organs_to_process:
+            organ_path = os.path.join(data_dir, organ)
+            if not os.path.exists(organ_path):
+                logger.warning(f"Path for organ {organ} doesn't exist, skipping...")
+                continue
+            organ_output = os.path.join(output_dir, organ)
+            os.makedirs(organ_output, exist_ok=True)
+            train_path = os.path.join(organ_path, 'train')
+            if os.path.exists(train_path):
+                logger.info(f"Extracting features from {train_path}")
+                train_features = self._extract_features_from_folder(train_path)
+                
+                train_output = os.path.join(organ_output, 'train_features.pt')
+                torch.save(train_features, train_output)
+                logger.info(f"Saved train features to {train_output}")
+                results[f"{organ}_train"] = train_output
             
-            if batch_tensors:
-                batch_tensor = torch.cat(batch_tensors, dim=0).to(self.device)
-                with torch.no_grad():
-                    batch_features = self.model(batch_tensor).cpu().numpy()
+            test_path = os.path.join(organ_path, 'test')
+            if os.path.exists(test_path):
+                logger.info(f"Extracting features from {test_path}")
+                test_features = self._extract_features_from_folder(test_path)
                 
-                for feature in batch_features:
-                    features.append(feature)
-                
-        return np.array(features), np.array(filename)
+                test_output = os.path.join(organ_output, 'test_features.pt')
+                torch.save(test_features, test_output)
+                logger.info(f"Saved test features to {test_output}")
+                results[f"{organ}_test"] = test_output
+        
+        return results
+
+
 
 
 if __name__ == "__main__":
@@ -257,12 +268,31 @@ if __name__ == "__main__":
                         help='specific organ to process, if None, process all organs')
     parser.add_argument('--output_dir', type=str, default='./results/features', 
                         help='feature extracted output directory')
+    parser.add_argument('--batch_size', type=int, default=16,
+                        help='batch size for feature extraction')
+    parser.add_argument('--prepare_data', action='store_true',
+                        help='whether to prepare data from h5 files')
     
     args = parser.parse_args()
     
-    print(f"Prepare datasets: base_dir={args.base_dir}, organ={args.organ}")
-    data_dir = FeatureExtractor.load_patch_from_h5(
-        base_dir=args.base_dir,
-        organ=args.organ
+    if args.prepare_data:
+        print(f"Prepare datasets: base_dir={args.base_dir}, organ={args.organ}")
+        data_dir = FeatureExtractor.load_patch_from_h5(
+            base_dir=args.base_dir,
+            organ=args.organ
+        )
+        print(f"Finished data preparation and save to: {data_dir}")
+    else:
+        parent_dir = os.path.dirname(os.path.abspath(args.base_dir))
+        data_dir = os.path.join(parent_dir, 'data')
+    
+    extractor = FeatureExtractor(
+        output_dir=args.output_dir,
+        batch_size=args.batch_size
     )
-    print(f"Finished data preparation and save to: {data_dir}")
+    
+    results = extractor.extract_features_for_dataset(data_dir, args.organ)
+    
+    print("Feature extraction complete. Results saved to:")
+    for key, path in results.items():
+        print(f"  - {key}: {path}")
