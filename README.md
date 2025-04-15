@@ -7,7 +7,7 @@ conda activate "(your_name)"
 pip install -r requirements.txt
 ```
 # Data preparation
-Just simplely type:
+Just simplely type for preparing a single organ (like breast):
 ```
 python uni_feature_extractor.py --prepare_data --h5_dir ./hest_data --organ breast > results/log/prepare_data.log 2>&1
 ```
