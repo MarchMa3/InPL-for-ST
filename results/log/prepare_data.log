@@ -1,0 +1,30 @@
+Traceback (most recent call last):
+  File "/Users/mamarch/Desktop/UWM/ST/InPL-for-ST/uni_feature_extractor.py", line 8, in <module>
+    import timm
+  File "/opt/anaconda3/envs/inpl/lib/python3.13/site-packages/timm/__init__.py", line 2, in <module>
+    from .layers import (
+    ...<4 lines>...
+    )
+  File "/opt/anaconda3/envs/inpl/lib/python3.13/site-packages/timm/layers/__init__.py", line 8, in <module>
+    from .classifier import create_classifier, ClassifierHead, NormMlpClassifierHead, ClNormMlpClassifierHead
+  File "/opt/anaconda3/envs/inpl/lib/python3.13/site-packages/timm/layers/classifier.py", line 15, in <module>
+    from .create_norm import get_norm_layer
+  File "/opt/anaconda3/envs/inpl/lib/python3.13/site-packages/timm/layers/create_norm.py", line 14, in <module>
+    from torchvision.ops.misc import FrozenBatchNorm2d
+  File "/opt/anaconda3/envs/inpl/lib/python3.13/site-packages/torchvision/__init__.py", line 10, in <module>
+    from torchvision import _meta_registrations, datasets, io, models, ops, transforms, utils  # usort:skip
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/anaconda3/envs/inpl/lib/python3.13/site-packages/torchvision/models/__init__.py", line 2, in <module>
+    from .convnext import *
+  File "/opt/anaconda3/envs/inpl/lib/python3.13/site-packages/torchvision/models/convnext.py", line 8, in <module>
+    from ..ops.misc import Conv2dNormActivation, Permute
+  File "/opt/anaconda3/envs/inpl/lib/python3.13/site-packages/torchvision/ops/__init__.py", line 15, in <module>
+    from .ciou_loss import complete_box_iou_loss
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1022, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1127, in get_code
+  File "<frozen importlib._bootstrap_external>", line 722, in _classify_pyc
+  File "<frozen importlib._bootstrap_external>", line 89, in _unpack_uint32
+KeyboardInterrupt
