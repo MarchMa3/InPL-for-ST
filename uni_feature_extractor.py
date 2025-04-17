@@ -371,17 +371,13 @@ class FeatureExtractor:
         results = {}
 
         for organ in organs_to_process:
-            organ_path = os.path.join(data_dir, organ)
-            if not os.path.exists(organ_path):
-                logger.warning(f"Path for organ {organ} doesn't exist, skipping...")
-                continue
             organ_output = os.path.join(output_dir, organ)
             os.makedirs(organ_output, exist_ok=True)
 
-            # Train dataset 
-            train_path = os.path.join(organ_path, 'train')
+            train_path = os.path.join(data_dir, 'train')
             if os.path.exists(train_path):
                 logger.info(f"Extracting features from {train_path}")
+                
                 train_dataset = datasets.ImageFolder(train_path, transform=self.transform)
                 train_dataloader = DataLoader(
                     train_dataset, 
@@ -389,19 +385,21 @@ class FeatureExtractor:
                     shuffle=False,
                     num_workers=self.num_workers
                 )
-            
+                
                 train_features_dict = extract_patch_features_from_dataloader(self.model, train_dataloader)
                 train_features = {
-                'embeddings': torch.Tensor(train_features_dict['embeddings']),
-                'labels': torch.Tensor(train_features_dict['labels']).type(torch.long),
-                'classes': train_dataset.classes
+                    'embeddings': torch.Tensor(train_features_dict['embeddings']),
+                    'labels': torch.Tensor(train_features_dict['labels']).type(torch.long),
+                    'classes': train_dataset.classes
                 }
+                logger.info(f"Train features shape: {train_features['embeddings'].shape}")
+                
                 train_output = os.path.join(organ_output, 'train_features.pt')
                 torch.save(train_features, train_output)
-                logger.info(f"Saved train features to {train_output}")
+                logger.info(f"Saved train features for {organ} to {train_output}")
                 results[f"{organ}_train"] = train_output
 
-            test_path = os.path.join(organ_path, 'test')
+            test_path = os.path.join(data_dir, 'test')
             if os.path.exists(test_path):
                 logger.info(f"Extracting features from {test_path}")
                 
@@ -420,10 +418,11 @@ class FeatureExtractor:
                     'labels': torch.Tensor(test_features_dict['labels']).type(torch.long),
                     'classes': test_dataset.classes
                 }
+                logger.info(f"Test features shape: {test_features['embeddings'].shape}")
                 
                 test_output = os.path.join(organ_output, 'test_features.pt')
                 torch.save(test_features, test_output)
-                logger.info(f"Saved test features to {test_output}")
+                logger.info(f"Saved test features for {organ} to {test_output}")
                 results[f"{organ}_test"] = test_output
     
         return results
