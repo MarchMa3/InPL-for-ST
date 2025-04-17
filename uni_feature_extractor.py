@@ -108,11 +108,11 @@ class FeatureExtractor:
         
         if patch_idx is not None:
             subdir_name = f"{patch_idx:03d}" if isinstance(patch_idx, int) else patch_idx
-            train_dir = os.path.join(patch_output_dir, 'train', 'patches', subdir_name)
-            test_dir = os.path.join(patch_output_dir, 'test', 'patches', subdir_name)
+            train_dir = os.path.join(patch_output_dir, 'train', subdir_name)
+            test_dir = os.path.join(patch_output_dir, 'test', subdir_name)
         else:
-            train_dir = os.path.join(patch_output_dir, 'train', 'patches')
-            test_dir = os.path.join(patch_output_dir, 'test', 'patches')
+            train_dir = os.path.join(patch_output_dir, 'train')
+            test_dir = os.path.join(patch_output_dir, 'test')
         
         os.makedirs(train_dir, exist_ok=True)
         os.makedirs(test_dir, exist_ok=True)
@@ -263,87 +263,64 @@ class FeatureExtractor:
         output_dir = self.output_dir
         os.makedirs(output_dir, exist_ok=True)
         results = {}
-        train_path = os.path.join(data_dir, 'train', 'patches')
-        patch_indices = []
-    
-        if os.path.exists(train_path):
-            patch_indices = [d for d in os.listdir(train_path) 
-                            if os.path.isdir(os.path.join(train_path, d))]
-            logger.info(f'Found patch indices: {patch_indices}')
-        
-        if not patch_indices:
-            logger.warning(f"No patch indices found in {train_path}")
+
+        # Train dataset
+        train_path = os.path.join(data_dir, 'train')
+        if not os.path.exists(train_path):
+            logger.warning(f"Train path {train_path} doesn't exist")
             return {}
-
-        # Process each patch index like we did with organs
-        for patch_idx in patch_indices:
-            patch_output = os.path.join(output_dir, patch_idx)
-            os.makedirs(patch_output, exist_ok=True)
-
-            # Train dataset 
-            if os.path.exists(train_path):
-                logger.info(f"Extracting features from train patches")
-                
-                patch_train_path = os.path.join(train_path, patch_idx)
-                if not os.path.exists(patch_train_path):
-                    logger.warning(f"Path for patch {patch_idx} in train folder doesn't exist, skipping...")
-                else:
-                    logger.info(f"Extracting features from {patch_train_path}")
-
-                    train_dataset = datasets.ImageFolder(patch_train_path, transform=self.transform)
-                    train_dataloader = DataLoader(
-                        train_dataset, 
-                        batch_size=self.batch_size, 
-                        shuffle=False,
-                        num_workers=self.num_workers
-                    )
-                
-                    train_features_dict = extract_patch_features_from_dataloader(self.model, train_dataloader)
-                    train_features = {
-                        'embeddings': torch.Tensor(train_features_dict['embeddings']),
-                        'labels': torch.Tensor(train_features_dict['labels']).type(torch.long),
-                        'classes': train_dataset.classes
-                    }
-                    train_out_dir = os.path.join(patch_output, 'train')
-                    if not os.path.exists(train_out_dir):
-                        os.makedirs(train_out_dir)
-                    train_output = os.path.join(train_out_dir, 'train_features.pt')
-                    torch.save(train_features, train_output)
-                    logger.info(f"Saved train features to {train_out_dir}")
-                    results[f"{patch_idx}_train"] = train_output
-
-            # Test dataset
-            test_path = os.path.join(data_dir, 'test', 'patches')
-            if os.path.exists(test_path):
-                logger.info(f"Extracting features from test patches")
-                patch_test_path = os.path.join(test_path, patch_idx)
-                if not os.path.exists(patch_test_path):
-                    logger.warning(f"Path for patch {patch_idx} in test folder doesn't exist, skipping...")
-                else:
-                    logger.info(f"Extracting features from {patch_test_path}")
-
-                    test_dataset = datasets.ImageFolder(patch_test_path, transform=self.transform)
-                    test_dataloader = DataLoader(
-                        test_dataset, 
-                        batch_size=self.batch_size, 
-                        shuffle=False,
-                        num_workers=self.num_workers
-                    )
-                    
-                    test_features_dict = extract_patch_features_from_dataloader(self.model, test_dataloader)
-                    
-                    test_features = {
-                        'embeddings': torch.Tensor(test_features_dict['embeddings']),
-                        'labels': torch.Tensor(test_features_dict['labels']).type(torch.long),
-                        'classes': test_dataset.classes
-                    }
-                    test_out_dir = os.path.join(patch_output, 'test')
-                    if not os.path.exists(test_out_dir):
-                        os.makedirs(test_out_dir)
-                    test_output = os.path.join(test_out_dir, 'test_features.pt')
-                    torch.save(test_features, test_output)
-                    logger.info(f"Saved test features to {test_out_dir}")
-                    results[f"{patch_idx}_test"] = test_output
+            
+        logger.info(f"Extracting features from train dataset")
+        
+        train_dataset = datasets.ImageFolder(train_path, transform=self.transform)
+        train_dataloader = DataLoader(
+            train_dataset, 
+            batch_size=self.batch_size, 
+            shuffle=False,
+            num_workers=self.num_workers
+        )
+        
+        train_features_dict = extract_patch_features_from_dataloader(self.model, train_dataloader)
+        train_features = {
+            'embeddings': torch.Tensor(train_features_dict['embeddings']),
+            'labels': torch.Tensor(train_features_dict['labels']).type(torch.long),
+            'classes': train_dataset.classes
+        }
+        
+        logger.info(f"Train features shape: {train_features['embeddings'].shape}")
+        
+        train_output = os.path.join(output_dir, 'train_features.pt')
+        torch.save(train_features, train_output)
+        logger.info(f"Saved train features to {output_dir}")
+        results["train"] = train_output
+        
+        # Test dataset
+        test_path = os.path.join(data_dir, 'test')
+        if os.path.exists(test_path):
+            logger.info(f"Extracting features from test dataset")
+            
+            test_dataset = datasets.ImageFolder(test_path, transform=self.transform)
+            test_dataloader = DataLoader(
+                test_dataset, 
+                batch_size=self.batch_size, 
+                shuffle=False,
+                num_workers=self.num_workers
+            )
+            
+            test_features_dict = extract_patch_features_from_dataloader(self.model, test_dataloader)
+            
+            test_features = {
+                'embeddings': torch.Tensor(test_features_dict['embeddings']),
+                'labels': torch.Tensor(test_features_dict['labels']).type(torch.long),
+                'classes': test_dataset.classes
+            }
+            
+            logger.info(f"Test features shape: {test_features['embeddings'].shape}")
+            
+            test_output = os.path.join(output_dir, 'test_features.pt')
+            torch.save(test_features, test_output)
+            logger.info(f"Saved test features to {output_dir}")
+            results["test"] = test_output
         
         return results
 

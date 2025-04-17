@@ -23,13 +23,13 @@ python feature_extractor.py --prepare_organ_data --h5_dir ./hest_data --organ br
 ## 1. Feature extraction
 ### Testing feature extraction using patches from single WSI
 ```
-python feature_extractor.py --extract_patch_features --patch_dir ./test_patches_data --output_dir ./results/patch_features --batch_size 16
+python feature_extractor.py --extract_patch_features --patch_dir ./test_patches_data --output_dir ./results/patch_features --batch_size 14
 ```
 ### Feature extraction for whole organ
 This step is used to fine-tuning UNI on pathology datasets and extract features from them.
 ```
 # For specific organ - like breast
-python feature_extractor.py --extract_organ_features --base_dir ./data --organ breast --output_dir ./results/organ_features --batch_size 16
+python feature_extractor.py --extract_organ_features --base_dir ./data --organ breast --output_dir ./results/organ_features --batch_size 14
 
 # For all organs in datasets
 python uni_feature_extractor.py --extract_organ_features --base_dir ./data --output_dir ./features

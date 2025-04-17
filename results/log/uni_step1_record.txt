@@ -1,0 +1,23 @@
+# Data preparation
+python uni_feature_extractor.py --prepare_patch_data --img_path ./hest_data/breast/patches/NCBI776.h5 --patch_dir ./test_patches_data --patch_idx NCBI776
+2025-04-17 00:32:27,100 - __main__ - INFO - File: NCBI776, Patches shape: (4973, 224, 224, 3)
+2025-04-17 00:33:35,725 - __main__ - INFO - Saved 3978 images to train set and 995 images to test set
+
+
+python uni_feature_extractor.py --prepare_patch_data --img_path ./hest_data/breast/patches/SPA0.h5 --patch_dir ./test_patches_data --patch_idx SPA0
+2025-04-17 00:34:46,224 - __main__ - INFO - File: SPA0, Patches shape: (262, 224, 224, 3)
+2025-04-17 00:34:50,703 - __main__ - INFO - Saved 209 images to train set and 53 images to test set
+
+# Feature extraction
+2025-04-17 00:47:36,718 - __main__ - INFO - Extracting features from train dataset
+100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 300/300 [01:04<00:00,  4.66it/s]
+2025-04-17 00:48:41,231 - __main__ - INFO - Train features shape: torch.Size([4187, 1536]) 
+2025-04-17 00:48:41,256 - __main__ - INFO - Saved train features to ./results/patch_features
+
+2025-04-17 00:48:41,256 - __main__ - INFO - Extracting features from test dataset
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 75/75 [00:16<00:00,  4.66it/s]
+2025-04-17 00:48:57,426 - __main__ - INFO - Test features shape: torch.Size([1048, 1536])
+2025-04-17 00:48:57,432 - __main__ - INFO - Saved test features to ./results/patch_features
+Patch feature extraction complete. Results saved to:
+  - train: ./results/patch_features/train_features.pt
+  - test: ./results/patch_features/test_features.pt
